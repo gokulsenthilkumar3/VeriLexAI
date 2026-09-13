@@ -1,178 +1,154 @@
-import { prisma } from '@/lib/prisma'
-import Link from 'next/link'
-import { format } from 'date-fns'
-import { Users, UserPlus, FileText, ArrowRight, TrendingUp } from 'lucide-react'
+'use client'
 
-async function getClients() {
-  try {
-    const clients = await prisma.user.findMany({
-      where: { role: 'TAXPAYER' },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        pan: true,
-        createdAt: true,
-        _count: {
-          select: {
-            documents: true,
-            taxReturns: true,
-          },
-        },
-      },
-    })
-    return clients
-  } catch {
-    return []
-  }
+import { Suspense, useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import { Plus, Search, MoreVertical, FileText, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
+
+type Client = {
+  id: string
+  name: string
+  email: string
+  pan: string
+  status: string
+  docs: number
 }
 
-// Color palette for client avatars
-const avatarColors = [
-  { bg: 'rgba(99,102,241,0.2)',   color: '#818cf8' },
-  { bg: 'rgba(16,185,129,0.2)',   color: '#34d399' },
-  { bg: 'rgba(245,158,11,0.2)',   color: '#fbbf24' },
-  { bg: 'rgba(239,68,68,0.2)',    color: '#f87171' },
-  { bg: 'rgba(14,165,233,0.2)',   color: '#38bdf8' },
-  { bg: 'rgba(139,92,246,0.2)',   color: '#a78bfa' },
-]
+function ClientsPage() {
+  const [clients, setClients] = useState<Client[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const searchParams = useSearchParams()
+  const workspace = searchParams.get('workspace') === 'LEGAL' ? 'LEGAL' : 'AUDIT'
+  const workspaceLabel = workspace === 'LEGAL' ? 'Legal' : 'Audit'
 
-export default async function ClientsPage() {
-  const clients = await getClients()
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const res = await fetch(`/api/clients?workspace=${workspace}`)
+        if (res.ok) {
+          const data = await res.json()
+          setClients(data)
+        }
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchClients()
+  }, [workspace])
+
+  const filteredClients = clients.filter(c => 
+    c.name.toLowerCase().includes(search.toLowerCase()) || 
+    c.pan.toLowerCase().includes(search.toLowerCase())
+  )
 
   return (
-    <div className="p-7 fade-in" style={{ minHeight: '100vh', background: '#07091a' }}>
-      
-      {/* ── Header ─────────────────────────────────────── */}
-      <div className="flex items-start justify-between mb-8">
+    <div className="p-6 md:p-10 fade-in h-full flex flex-col">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">Clients</h1>
-          <p className="text-sm mt-1" style={{ color: '#4b5563' }}>
-            {clients.length} taxpayer{clients.length !== 1 ? 's' : ''} under your management
-          </p>
+          <h1 className="text-2xl font-bold text-white mb-1">{workspaceLabel} Client Roster</h1>
+          <p className="text-sm text-slate-400">Manage only the clients assigned to the {workspaceLabel.toLowerCase()} workspace.</p>
         </div>
-        <Link href="/dashboard/clients/new" className="btn-primary text-sm">
-          <UserPlus size={15} />
-          Add Client
+        <Link href={`/dashboard/clients/new?workspace=${workspace}`} className="btn-primary py-2 px-4 whitespace-nowrap flex items-center gap-2">
+          <Plus size={16} /> Add {workspaceLabel} Client
         </Link>
       </div>
 
-      {/* ── Summary Chips ──────────────────────────────── */}
-      <div className="flex items-center gap-3 mb-6 flex-wrap">
-        {[
-          { label: 'All Clients', count: clients.length, active: true },
-          { label: 'Active', count: clients.length, active: false },
-          { label: 'Pending ITR', count: 0, active: false },
-        ].map(chip => (
-          <button
-            key={chip.label}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all"
-            style={chip.active
-              ? { background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }
-              : { background: 'rgba(255,255,255,0.04)', color: '#4b5563', border: '1px solid rgba(255,255,255,0.07)' }
-            }
-          >
-            {chip.label}
-            <span className="rounded-full px-1.5 py-0.5 text-[10px]"
-              style={chip.active
-                ? { background: 'rgba(99,102,241,0.3)', color: '#c7d2fe' }
-                : { background: 'rgba(255,255,255,0.06)', color: '#374151' }
-              }>
-              {chip.count}
-            </span>
-          </button>
-        ))}
+      {/* Toolbar */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="relative w-full max-w-sm">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input 
+            type="text" 
+            placeholder="Search by name or PAN..." 
+            className="input w-full pl-9 bg-slate-900/50 border-slate-800 text-white focus:border-indigo-500"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="text-xs text-slate-500 hidden sm:block">
+          Showing {filteredClients.length} clients
+        </div>
       </div>
 
-      {clients.length === 0 ? (
-        /* Empty state */
-        <div className="card rounded-2xl flex flex-col items-center justify-center py-20">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
-            style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
-            <Users size={32} style={{ color: '#6366f1' }} />
-          </div>
-          <h2 className="text-lg font-bold text-white mb-2">No clients yet</h2>
-          <p className="text-sm text-center max-w-xs mb-8" style={{ color: '#4b5563' }}>
-            Start by onboarding your first taxpayer client to manage their tax filings and investments.
-          </p>
-          <Link href="/dashboard/clients/new" className="btn-primary">
-            <UserPlus size={15} /> Add your first client
-          </Link>
-        </div>
-      ) : (
-        <div className="card rounded-2xl overflow-hidden">
-          <table className="w-full data-table">
-            <thead>
+      {/* Table */}
+      <div className="card rounded-xl overflow-hidden border border-slate-800 flex-1 min-h-[400px]">
+        <div className="overflow-x-auto h-full">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-900/80 border-b border-slate-800 text-slate-400">
               <tr>
-                <th>Client</th>
-                <th>PAN</th>
-                <th>Phone</th>
-                <th>Documents</th>
-                <th>Returns</th>
-                <th>Added</th>
-                <th />
+                <th className="px-6 py-4 font-medium">Client Name</th>
+                <th className="px-6 py-4 font-medium">PAN / Aadhaar</th>
+                <th className="px-6 py-4 font-medium">Documents</th>
+                <th className="px-6 py-4 font-medium">Status</th>
+                <th className="px-6 py-4 text-right font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {clients.map((client, i) => {
-                const color = avatarColors[i % avatarColors.length]
-                return (
-                  <tr key={client.id} className="group">
-                    <td>
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0"
-                          style={{ background: color.bg, color: color.color }}
-                        >
-                          {client.name[0].toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-white text-sm">{client.name}</div>
-                          <div className="text-xs mt-0.5" style={{ color: '#374151' }}>{client.email}</div>
-                        </div>
+            <tbody className="divide-y divide-slate-800/50">
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+                      Loading clients...
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredClients.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                    No clients found matching "{search}".
+                  </td>
+                </tr>
+              ) : (
+                filteredClients.map((client) => (
+                  <tr key={client.id} className="hover:bg-slate-800/20 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-white group-hover:text-indigo-400 transition-colors cursor-pointer">
+                        {client.name}
+                      </div>
+                      <div className="text-xs text-slate-500">{client.email}</div>
+                    </td>
+                    <td className="px-6 py-4 font-mono text-slate-300 uppercase">
+                      {client.pan}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1.5 text-slate-300">
+                        <FileText size={14} className="text-slate-500" />
+                        {client.docs} files
                       </div>
                     </td>
-                    <td>
-                      {client.pan ? (
-                        <span className="font-mono text-xs px-2 py-1 rounded-lg"
-                          style={{ background: 'rgba(255,255,255,0.05)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.07)' }}>
-                          {client.pan}
-                        </span>
-                      ) : (
-                        <span style={{ color: '#374151' }}>—</span>
-                      )}
-                    </td>
-                    <td style={{ color: '#6b7280' }}>{client.phone || <span style={{ color: '#374151' }}>—</span>}</td>
-                    <td>
-                      <div className="flex items-center gap-1.5" style={{ color: '#6b7280' }}>
-                        <FileText size={13} style={{ color: '#4b5563' }} />
-                        <span>{client._count.documents}</span>
+                    <td className="px-6 py-4">
+                      <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider
+                        ${client.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : ''}
+                        ${client.status === 'Pending' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : ''}
+                        ${client.status === 'Review' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : ''}
+                      `}>
+                        {client.status === 'Active' && <CheckCircle2 size={12} />}
+                        {client.status === 'Pending' && <Clock size={12} />}
+                        {client.status === 'Review' && <AlertCircle size={12} />}
+                        {client.status}
                       </div>
                     </td>
-                    <td>
-                      <span className="font-medium" style={{ color: '#6b7280' }}>{client._count.taxReturns}</span>
-                    </td>
-                    <td style={{ color: '#4b5563', fontSize: '11px' }}>
-                      {format(new Date(client.createdAt), 'dd MMM yyyy')}
-                    </td>
-                    <td>
-                      <Link
-                        href={`/dashboard/clients/${client.id}`}
-                        className="inline-flex items-center gap-1 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ color: '#6366f1' }}
-                      >
-                        View <ArrowRight size={12} />
-                      </Link>
+                    <td className="px-6 py-4 text-right">
+                      <button className="p-2 text-slate-500 hover:text-white transition-colors rounded-lg hover:bg-slate-800">
+                        <MoreVertical size={16} />
+                      </button>
                     </td>
                   </tr>
-                )
-              })}
+                ))
+              )}
             </tbody>
           </table>
         </div>
-      )}
+      </div>
     </div>
   )
+}
+
+export default function ClientsPageWithSuspense() {
+  return <Suspense fallback={<div className="p-10 text-sm" style={{ color: '#94a3b8' }}>Loading client roster…</div>}><ClientsPage /></Suspense>
 }

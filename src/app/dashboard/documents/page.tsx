@@ -1,164 +1,207 @@
-import { prisma } from '@/lib/prisma'
-import { format } from 'date-fns'
-import { UploadCloud, FileText, Search, MoreVertical, CheckCircle2, Clock, AlertCircle, File } from 'lucide-react'
+'use client'
 
-const statusConfig: Record<string, { dotClass: string; label: string; badgeClass: string }> = {
-  DONE:       { dotClass: 'dot-green', badgeClass: 'badge-green', label: 'Parsed' },
-  PENDING:    { dotClass: 'dot-amber', badgeClass: 'badge-amber', label: 'Pending' },
-  PROCESSING: { dotClass: 'dot-amber', badgeClass: 'badge-blue',  label: 'Processing' },
-  FAILED:     { dotClass: 'dot-red',   badgeClass: 'badge-red',   label: 'Failed' },
+import { useState, useRef } from 'react'
+import { UploadCloud, FileText, CheckCircle2, Loader2, Sparkles, AlertCircle, X } from 'lucide-react'
+
+type ParsedData = Record<string, string | number>
+
+type UploadedDoc = {
+  id: string
+  name: string
+  size: number
+  status: 'processing' | 'done' | 'error'
+  data?: ParsedData
 }
 
-const fileTypeConfig: Record<string, { bg: string; color: string; label: string }> = {
-  pdf:  { bg: 'rgba(239,68,68,0.15)',    color: '#f87171', label: 'PDF' },
-  xlsx: { bg: 'rgba(16,185,129,0.15)',   color: '#34d399', label: 'XLSX' },
-  xls:  { bg: 'rgba(16,185,129,0.15)',   color: '#34d399', label: 'XLS' },
-  docx: { bg: 'rgba(59,130,246,0.15)',   color: '#60a5fa', label: 'DOCX' },
-  png:  { bg: 'rgba(245,158,11,0.15)',   color: '#fbbf24', label: 'PNG' },
-  jpg:  { bg: 'rgba(245,158,11,0.15)',   color: '#fbbf24', label: 'JPG' },
-}
+export default function DocumentsPage() {
+  const [dragActive, setDragActive] = useState(false)
+  const [docs, setDocs] = useState<UploadedDoc[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-async function getDocuments() {
-  try {
-    return await prisma.document.findMany({
-      include: { user: { select: { name: true } } },
-      orderBy: { createdAt: 'desc' },
-    })
-  } catch {
-    return []
+  const handleFile = async (file: File) => {
+    const docId = Math.random().toString(36).substring(7)
+    
+    // Add to list as processing
+    setDocs(prev => [{
+      id: docId,
+      name: file.name,
+      size: file.size,
+      status: 'processing'
+    }, ...prev])
+
+    // Create form data
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const res = await fetch('/api/documents/upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      const result = await res.json()
+
+      if (res.ok) {
+        setDocs(prev => prev.map(d => 
+          d.id === docId 
+            ? { ...d, status: 'done', data: result.extractedData }
+            : d
+        ))
+      } else {
+        throw new Error(result.error)
+      }
+    } catch (e) {
+      setDocs(prev => prev.map(d => 
+        d.id === docId ? { ...d, status: 'error' } : d
+      ))
+    }
   }
-}
 
-export default async function DocumentsPage() {
-  const documents = await getDocuments()
-
-  const displayDocs = documents.length > 0 ? documents : [
-    { id: '1', fileName: 'Form16_FY2025.pdf',         fileType: 'pdf',  status: 'DONE',       taxYear: '2025-26', createdAt: new Date(), user: { name: 'Ravi Shankar' } },
-    { id: '2', fileName: 'HDFC_Bank_Stmt_Q4.xlsx',    fileType: 'xlsx', status: 'PROCESSING', taxYear: '2025-26', createdAt: new Date(), user: { name: 'Priya Nair' } },
-    { id: '3', fileName: 'Capital_Gains_Zerodha.pdf', fileType: 'pdf',  status: 'PENDING',    taxYear: '2025-26', createdAt: new Date(), user: { name: 'Arjun Mehta' } },
-    { id: '4', fileName: 'Salary_Slip_May2025.docx',  fileType: 'docx', status: 'DONE',       taxYear: '2025-26', createdAt: new Date(), user: { name: 'Sunita Rao' } },
-  ]
-
-  const doneCount = displayDocs.filter(d => d.status === 'DONE').length
-  const pendingCount = displayDocs.filter(d => d.status === 'PENDING' || d.status === 'PROCESSING').length
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0])
+    }
+  }
 
   return (
-    <div className="p-7 fade-in" style={{ minHeight: '100vh', background: '#07091a' }}>
-      
-      {/* ── Header ──────────────────────────────────────── */}
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">Documents</h1>
-          <p className="text-sm mt-1" style={{ color: '#4b5563' }}>Manage and AI-parse client financial documents</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2" size={14} style={{ color: '#4b5563' }} />
-            <input
-              type="text"
-              placeholder="Search documents..."
-              className="input pl-9 w-56 py-2.5 text-sm"
-              style={{ background: 'rgba(255,255,255,0.04)' }}
+    <div className="p-6 md:p-10 fade-in h-full flex flex-col max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-white mb-1">Document Intake Hub</h1>
+        <p className="text-sm text-slate-400">Upload Form 16s, AIS, or Bank Statements. Our AI extracts and validates data automatically.</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Upload Zone */}
+        <div className="lg:col-span-2 space-y-6">
+          <div 
+            className={`card rounded-2xl border-2 border-dashed p-12 text-center transition-all duration-300 ${
+              dragActive ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 bg-slate-900/50 hover:bg-slate-800/50 hover:border-slate-600'
+            }`}
+            onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(true); }}
+            onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragActive(false); }}
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onDrop={handleDrop}
+          >
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept=".pdf,.xlsx,.xls,.png,.jpg,.jpeg"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  handleFile(e.target.files[0])
+                }
+              }}
             />
+            
+            <div className="w-16 h-16 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-4">
+              <UploadCloud size={28} />
+            </div>
+            
+            <h3 className="text-lg font-bold text-white mb-2">Drop documents here</h3>
+            <p className="text-sm text-slate-400 max-w-sm mx-auto mb-6">
+              Supports PDF, Excel, and images up to 10MB.
+            </p>
+            
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="btn-primary py-2.5 px-6 mx-auto inline-flex items-center gap-2"
+            >
+              <FileText size={16} /> Browse Files
+            </button>
           </div>
-          <button className="btn-primary text-sm">
-            <UploadCloud size={15} /> Upload
-          </button>
-        </div>
-      </div>
 
-      {/* ── Stat Pills ──────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-4 mb-7">
-        {[
-          { label: 'Total Documents', val: displayDocs.length, accent: '#6366f1', accentBg: 'rgba(99,102,241,0.12)' },
-          { label: 'Parsed',          val: doneCount,          accent: '#10b981', accentBg: 'rgba(16,185,129,0.12)' },
-          { label: 'In Progress',     val: pendingCount,       accent: '#f59e0b', accentBg: 'rgba(245,158,11,0.12)' },
-          { label: 'Failed',          val: displayDocs.filter(d => d.status === 'FAILED').length, accent: '#ef4444', accentBg: 'rgba(239,68,68,0.12)' },
-        ].map(s => (
-          <div key={s.label} className="card rounded-xl p-4" style={{ borderTop: `2px solid ${s.accent}` }}>
-            <div className="text-xl font-extrabold text-white" style={{ letterSpacing: '-0.02em' }}>{s.val}</div>
-            <div className="text-xs mt-1" style={{ color: '#4b5563' }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Documents Table ─────────────────────────────── */}
-      <div className="card rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <div className="flex items-center gap-2">
-            <File size={16} style={{ color: '#6366f1' }} />
-            <span className="text-sm font-semibold text-white">All Documents</span>
-          </div>
-          <div className="flex gap-2">
-            {['All', 'PDF', 'Excel', 'Images'].map(f => (
-              <button key={f} className="text-xs px-3 py-1.5 rounded-lg transition-all"
-                style={f === 'All'
-                  ? { background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.25)' }
-                  : { background: 'rgba(255,255,255,0.04)', color: '#4b5563', border: '1px solid rgba(255,255,255,0.07)' }
-                }>
-                {f}
-              </button>
-            ))}
-          </div>
-        </div>
-        <table className="w-full data-table">
-          <thead>
-            <tr>
-              <th>File Details</th>
-              <th>Client</th>
-              <th>Tax Year</th>
-              <th>Status</th>
-              <th>Uploaded</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {displayDocs.map((doc) => {
-              const s = statusConfig[doc.status] || statusConfig.PENDING
-              const ft = fileTypeConfig[doc.fileType?.toLowerCase()] || { bg: 'rgba(99,102,241,0.15)', color: '#818cf8', label: doc.fileType?.toUpperCase() || 'FILE' }
-              return (
-                <tr key={doc.id} className="group">
-                  <td>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ background: ft.bg }}>
-                        <FileText size={18} style={{ color: ft.color }} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-medium text-white text-sm truncate max-w-[200px]">{doc.fileName}</div>
-                        <div className="text-[10px] mt-0.5 font-bold uppercase" style={{ color: ft.color }}>{ft.label}</div>
-                      </div>
+          {/* List of uploaded documents */}
+          {docs.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">Recent Uploads</h3>
+              {docs.map(doc => (
+                <div key={doc.id} className="card p-4 rounded-xl flex items-center justify-between group">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      doc.status === 'processing' ? 'bg-amber-500/20 text-amber-400' :
+                      doc.status === 'done' ? 'bg-emerald-500/20 text-emerald-500' :
+                      'bg-red-500/20 text-red-500'
+                    }`}>
+                      {doc.status === 'processing' ? <Loader2 size={20} className="animate-spin" /> : 
+                       doc.status === 'done' ? <FileText size={20} /> : 
+                       <AlertCircle size={20} />}
                     </div>
-                  </td>
-                  <td>
-                    <span className="font-medium" style={{ color: '#94a3b8' }}>{(doc as any).user?.name || 'Unknown'}</span>
-                  </td>
-                  <td>
-                    {doc.taxYear
-                      ? <span className="text-xs px-2 py-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)', color: '#6b7280', border: '1px solid rgba(255,255,255,0.07)' }}>{doc.taxYear}</span>
-                      : <span style={{ color: '#374151' }}>—</span>
-                    }
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <div className={s.dotClass} />
-                      <span className={`inline-flex ${s.badgeClass}`}>{s.label}</span>
+                    <div>
+                      <div className="font-medium text-white text-sm mb-0.5">{doc.name}</div>
+                      <div className="text-xs text-slate-500">{(doc.size / 1024).toFixed(1)} KB</div>
                     </div>
-                  </td>
-                  <td style={{ fontSize: '11px', color: '#4b5563' }}>
-                    {format(new Date(doc.createdAt), 'dd MMM yyyy, HH:mm')}
-                  </td>
-                  <td>
-                    <button className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                      style={{ background: 'rgba(255,255,255,0.05)', color: '#6b7280' }}>
-                      <MoreVertical size={14} />
+                  </div>
+                  
+                  <div className="flex items-center gap-4">
+                    {doc.status === 'processing' && (
+                      <span className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
+                        <Sparkles size={12} /> AI Parsing...
+                      </span>
+                    )}
+                    {doc.status === 'done' && (
+                      <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+                        <CheckCircle2 size={12} /> Extracted
+                      </span>
+                    )}
+                    <button className="text-slate-600 hover:text-red-400 transition-colors p-1" onClick={() => setDocs(docs.filter(d => d.id !== doc.id))}>
+                      <X size={16} />
                     </button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* AI Extraction Preview */}
+        <div className="lg:col-span-1">
+          <div className="card rounded-2xl p-6 h-full border-indigo-500/20 sticky top-24" style={{ background: 'linear-gradient(to bottom, rgba(99,102,241,0.05), transparent)' }}>
+            <div className="flex items-center gap-2 text-indigo-400 mb-6">
+              <Sparkles size={20} />
+              <h3 className="font-bold text-white">AI Data Viewer</h3>
+            </div>
+            
+            {docs.filter(d => d.status === 'done').length > 0 ? (
+              <div className="space-y-6">
+                {docs.filter(d => d.status === 'done').slice(0, 1).map(doc => (
+                  <div key={`data-${doc.id}`} className="space-y-4 fade-in">
+                    <div className="text-xs text-slate-400 pb-2 border-b border-slate-800">
+                      Extracted from: <span className="text-white font-medium">{doc.name}</span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {Object.entries(doc.data || {}).map(([key, val]) => (
+                        <div key={key} className="flex justify-between items-end">
+                          <span className="text-xs text-slate-400 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                          <span className="text-sm font-medium text-white font-mono text-right">
+                            {typeof val === 'number' && key.toLowerCase().includes('income') || key.toLowerCase().includes('salary') || key.toLowerCase().includes('tax') || key.toLowerCase().includes('deduct') ? `₹${val.toLocaleString('en-IN')}` : val}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <button className="w-full mt-4 py-2 rounded-lg text-xs font-semibold text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors border border-indigo-500/20">
+                      Send to Tax Engine
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="h-48 flex flex-col items-center justify-center text-center">
+                <div className="w-12 h-12 rounded-full border border-dashed border-slate-700 flex items-center justify-center mb-3 text-slate-600">
+                  <FileText size={20} />
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed">Upload a document to see AI-extracted intelligence here.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   )

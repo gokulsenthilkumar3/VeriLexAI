@@ -1,143 +1,100 @@
-# 🧾 Auditor App
+# VeriLex AI
 
-> AI-powered Chartered Accountant (CA) assistant for managing tax filing, financial accounts, and investment portfolios for multiple taxpayers.
+> **One workspace for Indian audit, tax, document intelligence, and legal-compliance research.**
 
----
+VeriLex AI brings the former audit portal and legal-research experience together in one Next.js application. Teams can intake financial documents, manage clients and portfolios, compare tax regimes, organise audit evidence, and turn compliance questions into reviewable research requests.
 
-## 🚀 Features
+## GitHub description
 
-### 👥 Multi-User Management
-- CA can manage multiple taxpayers / clients
-- Role-based access: Admin (CA), Client (Taxpayer)
-- Client onboarding with KYC document upload
-- Dashboard per client with full financial overview
+`AI workspace for Indian audit, tax, document intelligence, and legal-compliance research.`
 
-### 📄 Document Intelligence (AI-Powered)
-- Upload and parse **PDF**, **Excel (.xlsx/.xls)**, **Word Docs (.docx)**, **Images (JPG/PNG/WEBP)**
-- AI reads Form 16, bank statements, salary slips, ITR documents
-- Extracts income, deductions, investments automatically
-- Summarizes documents in plain language
+## What it does
 
-### 🏦 Account Management
-- Add and manage multiple accounts:
-  - Savings Accounts
-  - Current / Debt Accounts
-  - Credit Cards
-  - Demat Accounts
-  - Trading Accounts
-- Auto-fetch/manual entry of transactions
+- **Audit workspace** — create evidence-led workplans, track controls, and document exceptions.
+- **Tax operations** — manage clients, compare tax regimes, reconcile filings, and prepare reports.
+- **Document intelligence** — parse PDF, Excel, Word, and image files with OCR-assisted extraction.
+- **Legal & compliance research** — structure facts, identify research questions, and prepare counsel-ready hand-offs.
+- **Unified AI Workspace** — switch between Audit, Tax, and Law modes without leaving the client workflow.
 
-### 📈 Investment Portfolio Tracking
-- **Stocks** – NSE/BSE holdings, P&L, unrealized gains
-- **Mutual Funds (MF)** – NAV tracking, XIRR calculation
-- **Fixed Deposits (FD)** – Maturity tracking, interest income
-- **Recurring Deposits (RD)** – Monthly tracking
-- **Bonds** – Coupon tracking, maturity alerts
-- **Commodities** – Gold, Silver, etc.
-- **Crypto** – BTC, ETH, and altcoin portfolios
-- **NFTs** – NFT holdings and valuation
+## Product boundaries
 
-### 🧮 Tax Engine
-- Auto-compute income tax (Old & New Regime)
-- Capital gains: STCG / LTCG per asset class
-- Deductions: 80C, 80D, 80G, HRA, LTA, etc.
-- Advance tax reminders and installment calculator
-- GST filing support (GSTR-1, GSTR-3B)
+VeriLex AI is a professional productivity and research tool. AI responses are drafts and must be verified against source documents and current official requirements.
 
-### 📊 Reports & Analytics
-- CA-generated tax summary reports (PDF export)
-- Year-over-year comparison charts
-- Net worth tracker
-- Cash flow analysis
+- It does **not** replace an auditor's professional judgment.
+- It does **not** provide legal advice, representation, or a lawyer-client relationship.
+- A licensed advocate must review case-specific legal decisions or actions.
 
-### 🔔 Smart Notifications
-- Tax deadline reminders (ITR, advance tax, GST)
-- FD/RD maturity alerts
-- Capital loss harvesting suggestions
-- AI-driven tax-saving tips
+See [the legal and AI-use notice](docs/LEGAL_AND_AI_NOTICE.md) for the full position.
 
-### 🔐 Security
-- End-to-end encrypted document storage
-- OTP-based authentication
-- Role-based permissions
-- Audit trail for all CA actions
+## Stack
 
----
+| Area | Technology |
+| --- | --- |
+| Web app | Next.js 14, React, TypeScript, Tailwind CSS |
+| Database | Prisma (SQLite locally; adaptable to PostgreSQL/Supabase) |
+| AI | Anthropic SDK with safe guided fallbacks when no key is configured |
+| Document parsing | pdf-parse, SheetJS, Mammoth, Tesseract.js |
+| Charts & UI | Recharts, Lucide |
 
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js 14, TypeScript, Tailwind CSS, shadcn/ui |
-| Backend | Node.js, Express / Next.js API Routes |
-| Database | PostgreSQL (Supabase) |
-| File Storage | Supabase Storage / Firebase Storage |
-| AI/LLM | Claude API (Anthropic) / Ollama |
-| PDF Parsing | pdf-parse, pdf2json |
-| Excel Parsing | xlsx (SheetJS) |
-| Doc Parsing | mammoth.js |
-| Image OCR | Tesseract.js / Google Vision API |
-| Auth | Supabase Auth / NextAuth.js |
-| Deployment | Vercel (Frontend), Render (Backend) |
-| Charts | Recharts / Chart.js |
-
----
-
-## 📁 Project Structure
-
-```
-auditor-app/
-├── apps/
-│   ├── web/              # Next.js Frontend
-│   └── api/              # Express Backend (optional)
-├── packages/
-│   ├── ai-engine/        # Document parsing + LLM integration
-│   ├── tax-engine/       # Tax computation logic
-│   └── shared/           # Shared types, utils
-├── prisma/               # DB schema
-├── docs/                 # Documentation
-└── docker-compose.yml
-```
-
----
-
-## 🏁 Getting Started
+## Start locally
 
 ```bash
-# Clone the repo
-git clone https://github.com/gokulsenthilkumar3/auditor-app.git
-cd auditor-app
-
-# Install dependencies
+git clone https://github.com/<your-org>/verilex-ai.git
+cd verilex-ai
 npm install
-
-# Set up environment variables
-cp .env.example .env.local
-
-# Run database migrations
-npx prisma migrate dev
-
-# Start development server
+copy .env.example .env.local
+npx prisma generate
 npm run dev
 ```
 
----
+Open `http://localhost:3000`, then select **AI Workspace** from the dashboard navigation.
 
-## 📋 Roadmap
+### Environment
 
-- [ ] CA Dashboard with client management
-- [ ] Document upload & AI parsing
-- [ ] Account & portfolio management
-- [ ] Tax computation engine
-- [ ] Report generation (PDF)
-- [ ] Mobile app (React Native)
-- [ ] CA-to-client chat/messaging
-- [ ] Integration with DigiLocker
-- [ ] Zerodha / Groww / Angel One API integration
-- [ ] WhatsApp bot for reminders
+Set `ANTHROPIC_API_KEY` in `.env.local` to enable model-generated responses. Without it, the AI Workspace remains usable with guided, privacy-friendly workplan prompts. Review [.env.example](.env.example) for the remaining optional integrations.
 
----
+## Structure
 
-## 📄 License
+```text
+verilex-ai/
+├── src/app/
+│   ├── dashboard/            # Clients, documents, accounts, tax, reports, AI and legal views
+│   └── api/                  # Tax, document and unified assistant endpoints
+├── src/lib/                  # AI, Prisma and shared utilities
+├── prisma/                   # Data model and local database
+├── docs/                     # Architecture and safety documentation
+└── .env.example              # Local configuration template
+```
 
-MIT License © 2026 [Gokul S](https://github.com/gokulsenthilkumar3)
+## Core flows
+
+```text
+Document / client facts
+          │
+          ▼
+  Audit evidence & review ──► Tax computation / reporting
+          │                            │
+          └────────► AI Workspace ◄────┘
+                          │
+                          ▼
+             Legal-compliance research
+             and counsel-ready hand-off
+```
+
+## Roadmap
+
+- [x] Client, document, account, portfolio, tax, and reporting workflows
+- [x] Unified Audit / Tax / Law AI Workspace
+- [x] Legal-compliance research boundary and review guidance
+- [ ] Client-scoped AI context with explicit consent controls
+- [ ] Source-linked legal research and citation verification
+- [ ] Evidence export, immutable audit logs, and review sign-off
+- [ ] Role-based workflows for CA, auditor, client, and legal reviewer
+
+## Contributing
+
+Keep changes evidence-led and safety-aware. Do not add a claim of legal or tax accuracy without source validation, and do not log sensitive document contents in browser or server output.
+
+## License
+
+MIT © 2026 Gokul S.

@@ -1,65 +1,68 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import prisma from '@/lib/prisma'
 
-// GET /api/clients - list all taxpayer clients
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const workspace = new URL(request.url).searchParams.get('workspace') === 'LEGAL' ? 'LEGAL' : 'AUDIT'
     const clients = await prisma.user.findMany({
-      where: { role: 'TAXPAYER' },
+      where: { role: 'TAXPAYER', workspace },
       orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        pan: true,
-        createdAt: true,
-        _count: {
-          select: {
-            documents: true,
-            taxReturns: true,
-            accounts: true,
-          },
+      include: {
+        documents: {
+          select: { id: true, status: true, fileType: true }
         },
-      },
+        taxReturns: {
+          select: { id: true, taxYear: true, status: true }
+        }
+      }
     })
-    return NextResponse.json({ clients })
+    const mappedClients = clients.map(c => ({
+      id: c.id,
+      name: c.name,
+      email: c.email,
+      pan: c.pan || 'N/A',
+      status: 'Active', // Mocking status logic based on returns
+      docs: c.documents.length
+    }))
+    
+    return NextResponse.json(mappedClients)
   } catch (error) {
-    console.error('[GET /api/clients]', error)
+    console.error('Failed to fetch clients:', error)
     return NextResponse.json({ error: 'Failed to fetch clients' }, { status: 500 })
   }
 }
 
-// POST /api/clients - create a new taxpayer client
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { name, email, phone, pan, aadhaar } = body
+    const { name, email, phone, pan, aadhaar, workspace = 'AUDIT' } = body
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
     }
 
-    // Check if email already exists
-    const existing = await prisma.user.findUnique({ where: { email } })
-    if (existing) {
-      return NextResponse.json({ error: 'A client with this email already exists' }, { status: 409 })
-    }
-
-    const client = await prisma.user.create({
+    const clientWorkspace = workspace === 'LEGAL' ? 'LEGAL' : 'AUDIT'
+    const newClient = await prisma.user.create({
       data: {
         name,
         email,
-        phone: phone || null,
-        pan: pan || null,
-        aadhaar: aadhaar || null,
+        phone,
+        pan,
+        aadhaar,
         role: 'TAXPAYER',
-      },
+        workspace: clientWorkspace,
+        // In a real app, caId would be extracted from the authenticated user's session
+      }
     })
 
-    return NextResponse.json({ client }, { status: 201 })
+    if (clientWorkspace === 'AUDIT') {
+      await prisma.auditEngagement.create({ data: { userId: newClient.id, title: `${name} — Statutory audit`, financialYear: '2025–26' } })
+    } else {
+      await prisma.legalMatter.create({ data: { userId: newClient.id, reference: `VL-${Date.now().toString().slice(-6)}`, title: `${name} — Initial legal review`, practiceArea: 'General compliance' } })
+    }
+    return NextResponse.json(newClient, { status: 201 })
   } catch (error) {
-    console.error('[POST /api/clients]', error)
+    console.error('Failed to create client:', error)
     return NextResponse.json({ error: 'Failed to create client' }, { status: 500 })
   }
 }

@@ -3,41 +3,11 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
-enum UserRole {
-  CA
-  TAXPAYER
-}
 
-enum AccountType {
-  SAVINGS
-  CURRENT
-  DEBT
-  CREDIT_CARD
-  DEMAT
-  TRADING
-}
-
-enum AssetType {
-  STOCK
-  MUTUAL_FUND
-  FD
-  RD
-  BOND
-  COMMODITY
-  CRYPTO
-  NFT
-}
-
-enum DocumentStatus {
-  PENDING
-  PROCESSING
-  DONE
-  FAILED
-}
 
 model User {
   id            String    @id @default(cuid())
@@ -46,7 +16,8 @@ model User {
   phone         String?
   pan           String?   @unique
   aadhaar       String?   @unique
-  role          UserRole  @default(TAXPAYER)
+  role          String    @default("TAXPAYER")
+  workspace     String    @default("AUDIT") // AUDIT or LEGAL; keeps client rosters separate
   caId          String?   // assigned CA
   ca            User?     @relation("CATaxpayers", fields: [caId], references: [id])
   clients       User[]    @relation("CATaxpayers")
@@ -54,15 +25,46 @@ model User {
   portfolios    Portfolio[]
   documents     Document[]
   taxReturns    TaxReturn[]
+  auditEngagements AuditEngagement[]
+  legalMatters  LegalMatter[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+model AuditEngagement {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  title       String
+  financialYear String
+  status      String   @default("PLANNING") // PLANNING, FIELDWORK, REVIEW, COMPLETE
+  riskLevel   String   @default("MEDIUM")  // LOW, MEDIUM, HIGH
+  owner       String?
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LegalMatter {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  reference    String   @unique
+  title        String
+  practiceArea String
+  status       String   @default("INTAKE") // INTAKE, RESEARCH, COUNSEL_REVIEW, CLOSED
+  jurisdiction String?
+  owner        String?
+  nextReviewAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model BankAccount {
   id            String      @id @default(cuid())
   userId        String
   user          User        @relation(fields: [userId], references: [id])
-  accountType   AccountType
+  accountType   String
   bankName      String
   accountNumber String
   ifsc          String?
@@ -77,7 +79,7 @@ model Portfolio {
   id            String    @id @default(cuid())
   userId        String
   user          User      @relation(fields: [userId], references: [id])
-  assetType     AssetType
+  assetType     String
   name          String
   symbol        String?
   quantity      Float
@@ -87,7 +89,7 @@ model Portfolio {
   maturityDate  DateTime?
   interestRate  Float?    // for FD/RD/Bond
   platform      String?   // Zerodha, Groww, etc.
-  metadata      Json?     // extra data like ISIN, exchange
+  metadata      String?   // extra data like ISIN, exchange
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -99,8 +101,8 @@ model Document {
   fileName      String
   fileType      String          // pdf, xlsx, docx, jpg, png, etc.
   fileUrl       String
-  status        DocumentStatus  @default(PENDING)
-  extractedData Json?           // AI parsed output
+  status        String          @default("PENDING")
+  extractedData String?         // AI parsed output
   summary       String?         // AI summary
   taxYear       String?
   createdAt     DateTime        @default(now())
@@ -123,7 +125,7 @@ model TaxReturn {
   status          String    @default("DRAFT") // DRAFT, FILED, REVISED
   itrType         String?   // ITR-1, ITR-2, etc.
   filedOn         DateTime?
-  metadata        Json?     // deduction details, capital gains breakdown
+  metadata        String?   // deduction details, capital gains breakdown
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }

@@ -1,4 +1,4 @@
-# Auditor App – Architecture
+# VeriLex AI – Architecture
 
 ## Overview
 
@@ -12,7 +12,7 @@
 ┌───────────────────▼─────────────────────────┐
 │               Backend (API)                  │
 │         Next.js API Routes / Express         │
-│         Tax Engine | AI Engine               │
+│  Audit Engine | Tax Engine | Legal Research  │
 └────────┬──────────────────────┬─────────────┘
          │                      │
 ┌────────▼──────┐    ┌──────────▼──────────────┐
@@ -43,6 +43,17 @@
 3. Capital gains computed per asset class
 4. Deductions validated against limits (80C ≤ 1.5L, etc.)
 5. Final liability with TDS offset = balance payable / refund
+
+## Unified intelligence flow
+
+1. A user selects an Audit, Tax, or Law lens in the AI Workspace.
+2. The assistant receives the question plus the selected professional context.
+3. The response is displayed as a reviewable draft; it is never treated as an automatic filing, audit conclusion, or legal opinion.
+4. Users move into the relevant evidence, tax, report, or legal hand-off workflow.
+
+## Migrated legal contracts
+
+The legal-research scenario contracts from the former LexSense project now live in `src/types/legal.ts`. They provide a common structure for legal domains, consent-aware research requests, fact verification, and counsel questions inside the same application.
 
 ## Security
 
