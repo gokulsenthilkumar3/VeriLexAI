@@ -9,8 +9,9 @@ import { ArrowLeft, User, Mail, Phone, CreditCard, ShieldCheck, Loader2 } from '
 function NewClientPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const workspace = searchParams.get('workspace') === 'LEGAL' ? 'LEGAL' : 'AUDIT'
-  const workspaceLabel = workspace === 'LEGAL' ? 'Legal' : 'Audit'
+  const requestedWorkspace = searchParams.get('workspace')
+  const workspace = requestedWorkspace === 'LEGAL' || requestedWorkspace === 'WEALTH' ? requestedWorkspace : 'AUDIT'
+  const workspaceLabel = workspace === 'LEGAL' ? 'Legal' : workspace === 'WEALTH' ? 'Wealth' : 'Audit'
   const [loading, setLoading] = useState(false)
   
   const [formData, setFormData] = useState({
@@ -32,7 +33,7 @@ function NewClientPage() {
         body: JSON.stringify({ ...formData, workspace })
       })
       if (res.ok) {
-        router.push(workspace === 'LEGAL' ? '/dashboard/legal' : '/dashboard/audit')
+        router.push(workspace === 'LEGAL' ? '/dashboard/legal' : workspace === 'WEALTH' ? '/dashboard/wealth' : '/dashboard/audit')
       } else {
         console.error('Failed to save client')
       }

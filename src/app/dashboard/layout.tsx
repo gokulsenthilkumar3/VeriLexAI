@@ -20,12 +20,11 @@ import {
   Search,
   Upload,
   FilePlus2,
-  Moon,
-  Sun,
   Menu,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
+import { ThemeInitializer, ThemeToggle } from '@/components/theme-controls'
 
 const navGroups = [
   {
@@ -44,8 +43,9 @@ const navGroups = [
     ],
   },
   {
-    label: 'Tax & Wealth',
+    label: 'Wealth',
     items: [
+      { label: 'Wealth Scenarios', href: '/dashboard/wealth', icon: Building2 },
       { label: 'Tax Engine', href: '/dashboard/tax',       icon: Calculator },
       { label: 'Reports',    href: '/dashboard/reports',   icon: BarChart3 },
     ],
@@ -70,7 +70,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
-    <div className="flex min-h-screen" style={{ background: '#07091a' }}>
+    <div className="theme-shell flex min-h-screen" style={{ background: '#07091a' }}>
+      <ThemeInitializer />
       {/* Desktop Sidebar */}
       <div className="hidden md:flex flex-col">
         <Sidebar />
@@ -108,11 +109,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 /* ── Topbar ─────────────────────────────────────────────────── */
 function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
-  const [darkMode, setDarkMode] = useState(true)
 
   return (
     <header
-      className="shrink-0 flex items-center justify-between px-4 sm:px-7 py-3.5 gap-4"
+      className="theme-topbar shrink-0 flex items-center justify-between px-4 sm:px-7 py-3.5 gap-4"
       style={{
         background: 'rgba(8,10,28,0.95)',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
@@ -169,21 +169,7 @@ function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
         </Link>
 
         {/* Dark mode toggle */}
-        <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="w-9 h-9 flex items-center justify-center rounded-lg transition-colors"
-          style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
-          }}
-          aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-          title={darkMode ? 'Light mode' : 'Dark mode'}
-        >
-          {darkMode
-            ? <Moon size={14} style={{ color: '#94a3b8' }} />
-            : <Sun  size={14} style={{ color: '#fbbf24' }} />
-          }
-        </button>
+        <ThemeToggle compact />
 
         {/* Notification bell with badge */}
         <Link
@@ -246,7 +232,7 @@ function Sidebar() {
 
   return (
     <aside
-      className="w-[260px] md:w-[220px] shrink-0 flex flex-col h-full md:h-screen sticky top-0 overflow-hidden"
+      className="theme-sidebar w-[260px] md:w-[220px] shrink-0 flex flex-col h-full md:h-screen sticky top-0 overflow-hidden"
       style={{
         background: '#080a1c',
         borderRight: '1px solid rgba(255,255,255,0.07)',

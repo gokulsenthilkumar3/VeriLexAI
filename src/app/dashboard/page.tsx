@@ -20,6 +20,8 @@ import {
   AlertTriangle,
   Calendar,
   Upload,
+  Scale,
+  Globe2,
 } from 'lucide-react'
 
 async function getStats() {
@@ -185,6 +187,20 @@ export default async function DashboardPage() {
           Assessment Year 2025–26 &nbsp;·&nbsp;{' '}
           <span style={{ color: '#f87171' }}>3 deadlines this week</span>
         </p>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-3 mb-6">
+        {[
+          { title: 'Audit', desc: 'India · US · Europe engagements', href: '/dashboard/audit', icon: CheckCircle2, color: '#60a5fa' },
+          { title: 'Wealth', desc: 'Multi-region personal scenarios', href: '/dashboard/wealth', icon: Globe2, color: '#34d399' },
+          { title: 'Legal', desc: 'Civil, criminal, business & consumer', href: '/dashboard/legal', icon: Scale, color: '#c4b5fd' },
+        ].map(({ title, desc, href, icon: Icon, color }) => (
+          <Link key={title} href={href} className="card card-hover p-4 flex items-center gap-3">
+            <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${color}18`, color }}><Icon size={19}/></span>
+            <span><span className="font-semibold text-white block">{title}</span><span className="text-xs" style={{ color: '#94a3b8' }}>{desc}</span></span>
+            <ArrowRight size={15} className="ml-auto" style={{ color }} />
+          </Link>
+        ))}
       </div>
 
       {/* ── AI Alert Banner ───────────────────────────────────── */}

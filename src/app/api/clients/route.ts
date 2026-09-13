@@ -3,9 +3,10 @@ import prisma from '@/lib/prisma'
 
 export async function GET(request: Request) {
   try {
-    const workspace = new URL(request.url).searchParams.get('workspace') === 'LEGAL' ? 'LEGAL' : 'AUDIT'
+    const requested = new URL(request.url).searchParams.get('workspace')
+    const workspace = requested === 'LEGAL' || requested === 'WEALTH' ? requested : 'AUDIT'
     const clients = await prisma.user.findMany({
-      where: { role: 'TAXPAYER', workspace },
+      where: { role: 'TAXPAYER', ...(workspace === 'AUDIT' ? { auditEngagements: { some: {} } } : workspace === 'WEALTH' ? { wealthScenarios: { some: {} } } : { legalMatters: { some: {} } }) },
       orderBy: { createdAt: 'desc' },
       include: {
         documents: {
@@ -41,9 +42,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
     }
 
-    const clientWorkspace = workspace === 'LEGAL' ? 'LEGAL' : 'AUDIT'
-    const newClient = await prisma.user.create({
-      data: {
+    const clientWorkspace = workspace === 'LEGAL' || workspace === 'WEALTH' ? workspace : 'AUDIT'
+    const newClient = await prisma.user.upsert({
+      where: { email },
+      create: {
         name,
         email,
         phone,
@@ -52,11 +54,14 @@ export async function POST(request: Request) {
         role: 'TAXPAYER',
         workspace: clientWorkspace,
         // In a real app, caId would be extracted from the authenticated user's session
-      }
+      },
+      update: { name, phone, pan, aadhaar }
     })
 
     if (clientWorkspace === 'AUDIT') {
       await prisma.auditEngagement.create({ data: { userId: newClient.id, title: `${name} — Statutory audit`, financialYear: '2025–26' } })
+    } else if (clientWorkspace === 'WEALTH') {
+      await prisma.wealthScenario.create({ data: { userId: newClient.id, title: `${name} — Personal wealth plan` } })
     } else {
       await prisma.legalMatter.create({ data: { userId: newClient.id, reference: `VL-${Date.now().toString().slice(-6)}`, title: `${name} — Initial legal review`, practiceArea: 'General compliance' } })
     }

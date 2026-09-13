@@ -18,6 +18,8 @@ model User {
   aadhaar       String?   @unique
   role          String    @default("TAXPAYER")
   workspace     String    @default("AUDIT") // AUDIT or LEGAL; keeps client rosters separate
+  nationality   String?
+  residenceCountry String?
   caId          String?   // assigned CA
   ca            User?     @relation("CATaxpayers", fields: [caId], references: [id])
   clients       User[]    @relation("CATaxpayers")
@@ -27,6 +29,7 @@ model User {
   taxReturns    TaxReturn[]
   auditEngagements AuditEngagement[]
   legalMatters  LegalMatter[]
+  wealthScenarios WealthScenario[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -40,6 +43,7 @@ model AuditEngagement {
   status      String   @default("PLANNING") // PLANNING, FIELDWORK, REVIEW, COMPLETE
   riskLevel   String   @default("MEDIUM")  // LOW, MEDIUM, HIGH
   owner       String?
+  region      String   @default("INDIA") // INDIA, US, EU, or other configured region
   dueDate     DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -52,12 +56,27 @@ model LegalMatter {
   reference    String   @unique
   title        String
   practiceArea String
+  legalDomain  String   @default("CIVIL")
+  region       String   @default("INDIA")
   status       String   @default("INTAKE") // INTAKE, RESEARCH, COUNSEL_REVIEW, CLOSED
   jurisdiction String?
   owner        String?
   nextReviewAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model WealthScenario {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  title       String
+  region      String   @default("INDIA")
+  currency    String   @default("INR")
+  status      String   @default("ACTIVE")
+  owner       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model BankAccount {

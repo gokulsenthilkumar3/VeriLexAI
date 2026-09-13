@@ -49,6 +49,10 @@ npm run dev
 
 Open `http://localhost:3000`, then select **AI Workspace** from the dashboard navigation.
 
+## Release package
+
+The distributable source archive is named `verilex-ai-source.zip`. It contains the application source, Prisma schema, documentation, and configuration templates. It deliberately excludes `node_modules`, `.next`, Git metadata, local databases, and local environment files so it is compact, reproducible, and does not include machine-specific data.
+
 ### Environment
 
 Set `ANTHROPIC_API_KEY` in `.env.local` to enable model-generated responses. Without it, the AI Workspace remains usable with guided, privacy-friendly workplan prompts. Review [.env.example](.env.example) for the remaining optional integrations.
